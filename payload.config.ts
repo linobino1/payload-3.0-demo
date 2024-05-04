@@ -1,6 +1,7 @@
 import path from 'path'
 // import { postgresAdapter } from '@payloadcms/db-postgres'
 import { en } from 'payload/i18n/en'
+import { de } from 'payload/i18n/de'
 import {
   AlignFeature,
   BlockQuoteFeature,
@@ -29,8 +30,25 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
-  //editor: slateEditor({}),
-  editor: lexicalEditor(),
+  i18n: {
+    // this does not work:
+    // supportedLanguages: { de },
+    // en must be included in supportedLanguages, otherwise an error will be thrown
+    supportedLanguages: { en, de },
+    translations: {
+      en: {
+        // @ts-expect-error - typescript wants me to use a namespace
+        key: 'This is a key without a namespace',
+        namespace: {
+          key: 'This is a key within a namespace',
+          // @ts-expect-error - type doesn't allow nesting
+          nested: {
+            key: 'This is a nested key within a namespace',
+          },
+        },
+      },
+    },
+  },
   collections: [
     {
       slug: 'users',
@@ -39,55 +57,31 @@ export default buildConfig({
         delete: () => false,
         update: () => false,
       },
+      hooks: {
+        afterRead: [
+          async ({ req: { t, i18n } }) => {
+            console.log('----------------------------------------------')
+            console.log('i18n.language', i18n.language)
+            console.log('\n')
+            console.log('Key without namespace: ', t('key'))
+            console.log('\n')
+            console.log('Key within namespace: ', t('namespace.key'))
+            console.log('\n')
+            console.log('Nested key: ', t('namespace.nested.key'))
+          },
+        ],
+      },
       fields: [],
     },
-    {
-      slug: 'pages',
-      admin: {
-        useAsTitle: 'title',
-      },
-      fields: [
-        {
-          name: 'title',
-          type: 'text',
-        },
-        {
-          name: 'content',
-          type: 'richText',
-        },
-      ],
-    },
-    {
-      slug: 'media',
-      upload: true,
-      fields: [
-        {
-          name: 'text',
-          type: 'text',
-        },
-      ],
-    },
   ],
+  editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  // db: postgresAdapter({
-  //   pool: {
-  //     connectionString: process.env.POSTGRES_URI || ''
-  //   }
-  // }),
   db: mongooseAdapter({
     url: process.env.MONGODB_URI || '',
   }),
-
-  /**
-   * Payload can now accept specific translations from 'payload/i18n/en'
-   * This is completely optional and will default to English if not provided
-   */
-  i18n: {
-    supportedLanguages: { en },
-  },
 
   admin: {
     autoLogin: {
